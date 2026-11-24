@@ -7,4 +7,3 @@ omit =
     config/asgi.py
     config/wsgi.py
     */tests/*
-    
