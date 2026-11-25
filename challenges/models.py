@@ -43,6 +43,10 @@ class Challenge(models.Model):
     flag = models.CharField(max_length=64, editable=False)
     connection_info = models.CharField(max_length=255, blank=True, default="")
     status = models.CharField(max_length=16, choices=Status, default=Status.DRAFT)
+    is_private = models.BooleanField(
+        default=False,
+        help_text="Приватна задача видима лише учасникам CTF під час змагання.",
+    )
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="challenges")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -57,12 +61,15 @@ class Challenge(models.Model):
         ]
         constraints = [
             models.CheckConstraint(condition=models.Q(points__gte=1), name="challenge_points_positive"),
+            models.CheckConstraint(condition=~models.Q(flag=""), name="challenge_flag_not_empty"),
         ]
 
     def __str__(self):
         return self.title
 
     def set_flag(self, raw_flag):
+        if not raw_flag or not raw_flag.strip():
+            raise ValueError("Флаг не може бути порожнім.")
         self.flag = hash_flag(raw_flag)
 
     def check_flag(self, raw_flag):

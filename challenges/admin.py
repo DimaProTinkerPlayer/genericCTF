@@ -13,7 +13,17 @@ class ChallengeAdminForm(forms.ModelForm):
 
     class Meta:
         model = Challenge
-        fields = ["title", "description", "category", "difficulty", "points", "connection_info", "status", "author"]
+        fields = [
+            "title",
+            "description",
+            "category",
+            "difficulty",
+            "points",
+            "connection_info",
+            "status",
+            "is_private",
+            "author",
+        ]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -36,8 +46,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class ChallengeAdmin(admin.ModelAdmin):
     form = ChallengeAdminForm
-    list_display = ["title", "category", "difficulty", "points", "status", "author", "created_at"]
-    list_filter = ["status", "difficulty", "category"]
+    list_display = ["title", "category", "difficulty", "points", "status", "is_private", "author", "created_at"]
+    list_filter = ["status", "is_private", "difficulty", "category"]
     search_fields = ["title", "description"]
     list_select_related = ["category", "author"]
     readonly_fields = ["created_at"]

@@ -74,6 +74,23 @@ def test_check_flag(challenge):
     assert not challenge.check_flag("")
 
 
+@pytest.mark.parametrize("raw_flag", ["", "   ", "\n\t"])
+def test_set_flag_rejects_empty(raw_flag):
+    with pytest.raises(ValueError):
+        Challenge().set_flag(raw_flag)
+
+
+@pytest.mark.django_db
+def test_empty_flag_blocked_by_database(author, category):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Challenge.objects.create(title="x", description="x", category=category, author=author)
+
+
+@pytest.mark.django_db
+def test_is_private_default_false(challenge):
+    assert challenge.is_private is False
+
+
 def test_hash_flag_strips_whitespace():
     assert hash_flag(" abc ") == hash_flag("abc")
 
@@ -151,6 +168,20 @@ def test_admin_form_requires_flag_for_new(category, author):
     form = ChallengeAdminForm(data=form_data(category, author))
     assert not form.is_valid()
     assert "raw_flag" in form.errors
+
+
+@pytest.mark.django_db
+def test_admin_form_rejects_whitespace_flag(category, author):
+    form = ChallengeAdminForm(data=form_data(category, author, raw_flag="   "))
+    assert not form.is_valid()
+    assert "raw_flag" in form.errors
+
+
+@pytest.mark.django_db
+def test_admin_form_saves_is_private(category, author):
+    form = ChallengeAdminForm(data=form_data(category, author, raw_flag="CTF{p}", is_private="on"))
+    assert form.is_valid(), form.errors
+    assert form.save().is_private is True
 
 
 @pytest.mark.django_db
