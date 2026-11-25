@@ -19,7 +19,7 @@ def event_body(now, **overrides):
         "title": "H4ck3r CTF",
         "description": "Змагання для справжніх хацкерів",
         "start": (now + timedelta(days=1)).isoformat(),
-        "end": (now + timedelta(days=2)).isoformat()
+        "end": (now + timedelta(days=2)).isoformat(),
     }
     return {**body, **overrides}
 
@@ -87,11 +87,7 @@ def test_create_end_before_start(roles, now):
 
 @pytest.mark.django_db
 def test_create_end_before_now(roles, now):
-    body = event_body(
-        now,
-        start=(now + timedelta(days=2)),
-        end=(now - timedelta(hours=1))
-    )
+    body = event_body(now, start=(now + timedelta(days=2)), end=(now - timedelta(hours=1)))
 
     response = roles["organizer"].post(LIST_URL, body, format="json")
 
@@ -105,7 +101,7 @@ def test_create_end_before_now(roles, now):
     [
         "https://discord.com.evil.com/api/webhooks/1/somecesrte",
         "http://discord.com/api/webhooks/1/thanksforlight",
-        "https://example.com/hook"
+        "https://example.com/hook",
     ],
 )
 @pytest.mark.django_db
@@ -118,17 +114,14 @@ def test_create_rejects_non_discord_webhook(roles, now, webhook):
 
 @pytest.mark.parametrize(
     "webhook",
-    [
-        "https://discord.com/api/webhooks/1/thanksforlight",
-        "https://discordapp.com/api/webhooks/67/workinglegit"
-    ],
+    ["https://discord.com/api/webhooks/1/thanksforlight", "https://discordapp.com/api/webhooks/67/workinglegit"],
 )
 @pytest.mark.django_db
-def test_create_rejects_non_discord_webhook(roles, now, webhook):
+def test_create_accepts_discord_webhook(roles, now, webhook):
     response = roles["organizer"].post(LIST_URL, event_body(now, discord_webhook=webhook), format="json")
 
     assert response.status_code == 201
-    assert "discord_webhook" in response.data["fields"]
+    assert response.data["discord_webhook"] == webhook
 
 
 @pytest.mark.parametrize(
@@ -195,8 +188,8 @@ def test_update_not_found(roles):
 
 @pytest.mark.django_db
 def test_update_end_before_now(roles, started_event, now):
-    new_end = now - timedelta(hours=1)
-    response = roles["admin"].patch(detail_url(started_event), {"end": new_end})
+    new_end = now - timedelta(minutes=1)
+    response = roles["organizer"].patch(detail_url(started_event.id), {"end": new_end.isoformat()}, format="json")
 
     assert response.status_code == 200
     started_event.refresh_from_db()
