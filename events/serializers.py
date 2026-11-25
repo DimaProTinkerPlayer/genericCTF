@@ -3,9 +3,9 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .exceptions import Conflict
-from .models import CTFEvent
+from .models import Event
 
-DISCORD_WEBHOOK_PREFIX = "https://discord.com/api/webhooks/"
+DISCORD_WEBHOOK_PREFIXES = ("https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/")
 
 
 class OrganizerSerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class EventSerializer(serializers.ModelSerializer):
     organizer = OrganizerSerializer(read_only=True)
 
     class Meta:
-        model = CTFEvent
+        model = Event
         fields = [
             "id",
             "title",
@@ -32,7 +32,7 @@ class EventSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at"]
 
     def validate_discord_webhook(self, value: str):
-        if value and not value.startswith(DISCORD_WEBHOOK_PREFIX):
+        if value and not value.startswith(DISCORD_WEBHOOK_PREFIXES):
             raise serializers.ValidationError("Невалідна адреса діскорд вебхуку")
         return value
 
@@ -46,14 +46,13 @@ class EventSerializer(serializers.ModelSerializer):
             and attrs["start"] != self.instance.start
             and self.instance.start <= timezone.now()
         ):
-            raise Conflict(
-                "Час початку неможливо змінити, тому що змагання вже розпочалося."
-            )
+            raise Conflict("Час початку неможливо змінити, тому що змагання вже розпочалося.")
+
+        if self.instance is None and end <= timezone.now():
+            raise serializers.ValidationError({"end": "Значення end мусить бути пізніше ніж теперішній час"})
 
         if start >= end:
-            raise serializers.ValidationError(
-                {"end": "Неможливі значення початку та закінчення змагання."}
-            )
+            raise serializers.ValidationError({"end": "Неможливі значення початку та закінчення змагання."})
 
         return attrs
 

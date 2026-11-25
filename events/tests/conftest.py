@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from events.models import CTFEvent
+from events.models import Event
 
 PASSWORD = "omegagoodunhackablepassword"
 WEBHOOK = "https://discord.com/api/webhooks/67/somesecret"
@@ -34,9 +34,7 @@ def other_user():
 
 @pytest.fixture
 def admin():
-    return get_user_model().objects.create_user(
-        username="admin", password=PASSWORD, is_staff=True
-    )
+    return get_user_model().objects.create_user(username="admin", password=PASSWORD, is_staff=True)
 
 
 @pytest.fixture
@@ -62,7 +60,7 @@ def roles(api_client, auth_client, organizer, other_user, admin):
 
 @pytest.fixture
 def future_event(organizer, now):
-    return CTFEvent.objects.create(
+    return Event.objects.create(
         title="MohylaCTF",
         start=now + timedelta(days=1),
         end=now + timedelta(days=2),
@@ -73,7 +71,7 @@ def future_event(organizer, now):
 
 @pytest.fixture
 def started_event(organizer, now):
-    return CTFEvent.objects.create(
+    return Event.objects.create(
         title="CTF NOW",
         start=now - timedelta(hours=1),
         end=now + timedelta(days=1),

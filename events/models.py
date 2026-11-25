@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 
 
-class CTFEvent(models.Model):
+class Event(models.Model):
     title = models.CharField(max_length=128)
     description = models.TextField(blank=True, default="")
     start = models.DateTimeField()

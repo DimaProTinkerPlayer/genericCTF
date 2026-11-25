@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 from django.urls import reverse
 
-from events.models import CTFEvent
+from events.models import Event
 
 from .conftest import WEBHOOK
 
@@ -19,7 +19,7 @@ def event_body(now, **overrides):
         "title": "H4ck3r CTF",
         "description": "Змагання для справжніх хацкерів",
         "start": (now + timedelta(days=1)).isoformat(),
-        "end": (now + timedelta(days=2)).isoformat(),
+        "end": (now + timedelta(days=2)).isoformat()
     }
     return {**body, **overrides}
 
@@ -37,6 +37,7 @@ def test_detail_not_found(api_client):
     response = api_client.get(detail_url(6767))
 
     assert response.status_code == 404
+    assert response.data["error"] == "Змагання не знайдено."
 
 
 @pytest.mark.parametrize(
@@ -56,19 +57,17 @@ def test_create_requires_auth(api_client, now):
     response = api_client.post(LIST_URL, event_body(now), format="json")
 
     assert response.status_code == 401
-    assert not CTFEvent.objects.exists()
+    assert not Event.objects.exists()
 
 
 @pytest.mark.django_db
 def test_create_event(roles, organizer, now):
-    response = roles["organizer"].post(
-        LIST_URL, event_body(now, discord_webhook=WEBHOOK), format="json"
-    )
+    response = roles["organizer"].post(LIST_URL, event_body(now, discord_webhook=WEBHOOK), format="json")
 
     assert response.status_code == 201
     assert response.data["organizer"]["id"] == organizer.id
     assert response.data["discord_webhook"] == WEBHOOK
-    assert CTFEvent.objects.get(id=response.data["id"]).organizer == organizer
+    assert Event.objects.get(id=response.data["id"]).organizer == organizer
 
 
 @pytest.mark.django_db
@@ -83,7 +82,22 @@ def test_create_end_before_start(roles, now):
 
     assert response.status_code == 400
     assert "end" in response.data["fields"]
-    assert not CTFEvent.objects.exists()
+    assert not Event.objects.exists()
+
+
+@pytest.mark.django_db
+def test_create_end_before_now(roles, now):
+    body = event_body(
+        now,
+        start=(now + timedelta(days=2)),
+        end=(now - timedelta(hours=1))
+    )
+
+    response = roles["organizer"].post(LIST_URL, body, format="json")
+
+    assert response.status_code == 400
+    assert "end" in response.data["fields"]
+    assert not Event.objects.exists()
 
 
 @pytest.mark.parametrize(
@@ -91,16 +105,29 @@ def test_create_end_before_start(roles, now):
     [
         "https://discord.com.evil.com/api/webhooks/1/somecesrte",
         "http://discord.com/api/webhooks/1/thanksforlight",
-        "https://example.com/hook",
+        "https://example.com/hook"
     ],
 )
 @pytest.mark.django_db
 def test_create_rejects_non_discord_webhook(roles, now, webhook):
-    response = roles["organizer"].post(
-        LIST_URL, event_body(now, discord_webhook=webhook), format="json"
-    )
+    response = roles["organizer"].post(LIST_URL, event_body(now, discord_webhook=webhook), format="json")
 
     assert response.status_code == 400
+    assert "discord_webhook" in response.data["fields"]
+
+
+@pytest.mark.parametrize(
+    "webhook",
+    [
+        "https://discord.com/api/webhooks/1/thanksforlight",
+        "https://discordapp.com/api/webhooks/67/workinglegit"
+    ],
+)
+@pytest.mark.django_db
+def test_create_rejects_non_discord_webhook(roles, now, webhook):
+    response = roles["organizer"].post(LIST_URL, event_body(now, discord_webhook=webhook), format="json")
+
+    assert response.status_code == 201
     assert "discord_webhook" in response.data["fields"]
 
 
@@ -110,9 +137,7 @@ def test_create_rejects_non_discord_webhook(roles, now, webhook):
 )
 @pytest.mark.django_db
 def test_update_permissions(role, expected, roles, future_event):
-    response = roles[role].patch(
-        detail_url(future_event.id), {"title": "Renamed"}, format="json"
-    )
+    response = roles[role].patch(detail_url(future_event.id), {"title": "Renamed"}, format="json")
 
     assert response.status_code == expected
     future_event.refresh_from_db()
@@ -154,9 +179,7 @@ def test_update_start_after_event_started(roles, started_event, now):
 def test_update_end_after_event_started(roles, started_event, now):
     new_end = now + timedelta(days=3)
 
-    response = roles["organizer"].patch(
-        detail_url(started_event.id), {"end": new_end.isoformat()}, format="json"
-    )
+    response = roles["organizer"].patch(detail_url(started_event.id), {"end": new_end.isoformat()}, format="json")
 
     assert response.status_code == 200
     started_event.refresh_from_db()
@@ -165,11 +188,19 @@ def test_update_end_after_event_started(roles, started_event, now):
 
 @pytest.mark.django_db
 def test_update_not_found(roles):
-    response = roles["admin"].patch(
-        detail_url(6767), {"title": "HACKEDYOUSITEmuhahaha"}, format="json"
-    )
+    response = roles["admin"].patch(detail_url(6767), {"title": "HACKEDYOUSITEmuhahaha"}, format="json")
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_update_end_before_now(roles, started_event, now):
+    new_end = now - timedelta(hours=1)
+    response = roles["admin"].patch(detail_url(started_event), {"end": new_end})
+
+    assert response.status_code == 200
+    started_event.refresh_from_db()
+    assert started_event.end == new_end
 
 
 @pytest.mark.parametrize(
@@ -181,4 +212,4 @@ def test_delete_permissions(role, expected, roles, future_event):
     response = roles[role].delete(detail_url(future_event.id))
 
     assert response.status_code == expected
-    assert CTFEvent.objects.filter(id=future_event.id).exists() == (expected != 204)
+    assert Event.objects.filter(id=future_event.id).exists() == (expected != 204)
