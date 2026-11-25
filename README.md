@@ -52,3 +52,33 @@
 - командна участь у CTF
 - Discord-бот з командами (скорборд, інформація про задачу)
 - підказки до задач зі штрафом у балах
+
+## Як запустити проєкт
+
+Потрібен Python 3.12+.
+
+```bash
+git clone https://github.com/DimaProTinkerPlayer/genericCTF.git
+cd genericCTF
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver
+```
+
+У `.env` треба вписати свій `SECRET_KEY`:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+На Windows (PowerShell) venv активується через `.venv\Scripts\Activate.ps1`, а `.env` копіюється командою `copy .env.example .env`.
+
+Тести і лінтер:
+
+```bash
+pytest
+ruff check .
+```
