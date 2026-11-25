@@ -1,10 +1,9 @@
 import logging
 
 from django.shortcuts import get_object_or_404
-
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 
 from .models import CTFEvent
@@ -27,7 +26,7 @@ class EventList(APIView):
         serializer.is_valid(raise_exception=True)
         event = serializer.save(organizer=request.user)
         logger.info("Event %s created by user %s", event.id, request.user.id)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=HTTP_201_CREATED)
 
 
 class EventDetail(APIView):
@@ -49,6 +48,6 @@ class EventDetail(APIView):
     def delete(self, request, pk):
         event = get_object_or_404(CTFEvent, id=pk)
         self.check_object_permissions(request, event)
-        logger.info("deleted event id=%s by user %s", pk, request.user.id)
+        logger.info("Event %s deleted by user %s", pk, request.user.id)
         event.delete()
         return Response(status=HTTP_204_NO_CONTENT)
