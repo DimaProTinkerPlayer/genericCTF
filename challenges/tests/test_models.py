@@ -1,9 +1,9 @@
 import hashlib
 
 import pytest
-from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, connection, transaction
 from django.db.models import ProtectedError
 
 from challenges.admin import ChallengeAdminForm
@@ -49,9 +49,13 @@ def test_defaults(challenge):
     assert challenge.created_at is not None
 
 
-def test_choices():
-    assert Challenge.Status.values == ["draft", "review", "active", "rejected"]
-    assert Challenge.Difficulty.values == ["easy", "medium", "hard"]
+@pytest.mark.django_db
+@pytest.mark.parametrize("field", ["status", "difficulty"])
+def test_unknown_choice_rejected(challenge, field):
+    setattr(challenge, field, "unknown")
+    with pytest.raises(ValidationError) as error:
+        challenge.full_clean()
+    assert field in error.value.message_dict
 
 
 @pytest.mark.django_db
@@ -98,18 +102,25 @@ def test_related_names(challenge, author, category):
     assert list(author.challenges.all()) == [challenge]
 
 
-def test_indexes():
-    indexed = [tuple(index.fields) for index in Challenge._meta.indexes]
-    assert ("status", "category") in indexed
+@pytest.mark.django_db
+def test_indexes_exist_in_database():
+    with connection.cursor() as cursor:
+        constraints = connection.introspection.get_constraints(cursor, Challenge._meta.db_table)
+    indexed = [tuple(info["columns"]) for info in constraints.values() if info["index"]]
+    assert ("status", "category_id") in indexed
     assert ("difficulty",) in indexed
-    assert Challenge._meta.get_field("category").db_index
-    assert Challenge._meta.get_field("author").db_index
+    assert ("category_id",) in indexed
+    assert ("author_id",) in indexed
 
 
-def test_admin_registered():
-    assert admin.site.is_registered(Category)
-    assert admin.site.is_registered(Challenge)
-    assert "status" in admin.site._registry[Challenge].list_display
+@pytest.mark.django_db
+@pytest.mark.parametrize("model, expected", [("category", "Web"), ("challenge", "SQLi 101")])
+def test_admin_changelist(client, challenge, model, expected):
+    admin_user = get_user_model().objects.create_superuser(username="admin", password="S0me-strong-pass")
+    client.force_login(admin_user)
+    response = client.get(f"/admin/challenges/{model}/")
+    assert response.status_code == 200
+    assert expected in response.content.decode()
 
 
 def form_data(category, author, **extra):
