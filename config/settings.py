@@ -163,4 +163,11 @@ LOGGING = {
         "handlers": ["console"],
         "level": config("LOG_LEVEL", default="INFO"),
     },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": config("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+    },
 }
