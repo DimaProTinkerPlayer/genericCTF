@@ -39,8 +39,9 @@ class EventDetail(APIView):
     def patch(self, request, pk):
         event = get_object_or_404(CTFEvent, id=pk)
         self.check_object_permissions(request, event)
-        serializer = EventSerializer(event, data=request.data, partial=True,
-                                     context={"request": request})
+        serializer = EventSerializer(
+            event, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

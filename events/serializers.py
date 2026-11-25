@@ -19,8 +19,16 @@ class EventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CTFEvent
-        fields = ["id", "title", "description", "start", "end", "organizer",
-                  "discord_webhook", "created_at"]
+        fields = [
+            "id",
+            "title",
+            "description",
+            "start",
+            "end",
+            "organizer",
+            "discord_webhook",
+            "created_at",
+        ]
         read_only_fields = ["created_at"]
 
     def validate_discord_webhook(self, value: str):
@@ -32,16 +40,20 @@ class EventSerializer(serializers.ModelSerializer):
         start = attrs.get("start", self.instance.start if self.instance else None)
         end = attrs.get("end", self.instance.end if self.instance else None)
 
-        if (self.instance is not None and
-                "start" in attrs and
-                attrs["start"] != self.instance.start and
-                self.instance.start <= timezone.now()):
-            raise Conflict("Час початку неможливо змінити, тому що змагання вже "
-                           "розпочалося.")
+        if (
+            self.instance is not None
+            and "start" in attrs
+            and attrs["start"] != self.instance.start
+            and self.instance.start <= timezone.now()
+        ):
+            raise Conflict(
+                "Час початку неможливо змінити, тому що змагання вже розпочалося."
+            )
 
         if start >= end:
-            raise serializers.ValidationError({"end": "Неможливі значення початку та "
-                                                      "закінчення змагання."})
+            raise serializers.ValidationError(
+                {"end": "Неможливі значення початку та закінчення змагання."}
+            )
 
         return attrs
 
