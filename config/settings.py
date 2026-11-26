@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "events",
+    "challenges",
 ]
 
 MIDDLEWARE = [
@@ -163,5 +164,12 @@ LOGGING = {
     "root": {
         "handlers": ["console"],
         "level": config("LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": config("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
     },
 }
