@@ -4,6 +4,7 @@ import hmac
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 
 
 def hash_flag(raw_flag):
@@ -18,6 +19,9 @@ class Category(models.Model):
         ordering = ["name"]
         verbose_name = "категорія"
         verbose_name_plural = "категорії"
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="category_name_ci_unique"),
+        ]
 
     def __str__(self):
         return self.name

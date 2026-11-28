@@ -35,6 +35,12 @@ def test_category_name_unique(category):
 
 
 @pytest.mark.django_db
+def test_category_name_unique_ignore_case(category):
+    with pytest.raises(IntegrityError):
+        Category.objects.create(name="WEB")
+
+
+@pytest.mark.django_db
 def test_str(category, challenge):
     assert str(category) == "Web"
     assert str(challenge) == "SQLi 101"
